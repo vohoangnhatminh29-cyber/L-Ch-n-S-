@@ -1,0 +1,9 @@
+{
+  "name": "Main Lá Chắn Số - Hệ thống Cảnh báo & Phòng chống Lừa đảo Trực tuyến",
+  "description": "Giải pháp AI thông minh hỗ trợ nhận diện, phân tích và cảnh báo các thủ đoạn lừa đảo trên không gian mạng cho mọi công dân số.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}

@@ -1,0 +1,16 @@
+
+{
+  "name": "lcs-push-demo",
+  "version": "1.0.0",
+  "description": "Demo Push Notification for Lá Chắn Số",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "web-push": "^3.6.6",
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "body-parser": "^1.20.2"
+  }
+}
