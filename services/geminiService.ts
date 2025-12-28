@@ -49,9 +49,9 @@ KIẾN THỨC CỐT LÕI:
 
 QUY TẮC PHẢN HỒI (RẤT QUAN TRỌNG):
 1. CÂU TRẢ LỜI CHÍNH PHẢI DƯỚI 100 CHỮ: Luôn súc tích, đi thẳng vào vấn đề.
-2. THẨM MỸ & THÂN THIỆN: Sử dụng các icon (🛡️, ⚠️, 🔍, ✅, 💡, 🚀) phù hợp để câu trả lời sinh động, dễ đọc cho học sinh.
-3. PHẦN CHI TIẾT: Nếu nội dung cần giải thích sâu, hướng dẫn kỹ thuật hoặc quy trình dài (không giới hạn độ dài), hãy đặt toàn bộ trong thẻ [CHI TIẾT: ...]. Tuyệt đối không để nội dung dài ở phần trả lời chính.
-4. Ưu tiên cảnh báo an toàn ngay lập tức nếu phát hiện dấu hiệu lừa đảo.
+2. THẨM MỸ & THÂN THIỆN: Sử dụng các icon phù hợp để câu trả lời sinh động.
+3. PHẦN CHI TIẾT: Nếu nội dung cần giải thích sâu, hãy đặt toàn bộ trong thẻ [CHI TIẾT: ...].
+4. Luôn ưu tiên cảnh báo an toàn ngay lập tức.
 `;
 
 export async function analyzeContent(
@@ -70,13 +70,11 @@ export async function analyzeContent(
     Dữ liệu người dùng: "${normalizedContent}"
     
     PHÂN LOẠI RỦI RO (BẮT BUỘC):
-    - CAO: Nếu số điện thoại nằm trong blacklist, mạo danh công an/viện kiểm sát/ngân hàng qua điện thoại, yêu cầu OTP, hối thúc chuyển khoản tiền, Deepfake, hoặc link có đuôi lạ rủi ro cao.
-    - TRUNG BÌNH: Người lạ làm quen, link lạ, mời đầu tư, tuyển CTV online, kịch bản có dấu hiệu hối thúc.
-    - THẤP: Giao tiếp bình thường, không yêu cầu thông tin nhạy cảm.
+    - CAO: Nếu số điện thoại nằm trong blacklist, mạo danh công an/ngân hàng, yêu cầu OTP, hối thúc chuyển khoản, Deepfake, link lạ.
+    - TRUNG BÌNH: Người lạ làm quen, link lạ, tuyển CTV online.
+    - THẤP: Giao tiếp bình thường.
 
-    LỜI KHUYÊN:
-    - Nếu đã chuyển tiền: Dừng ngay, liên hệ ngân hàng khóa tài khoản, báo cáo tại canhbao.khonggianmang.vn.
-    - Nếu nghi ngờ: Áp dụng 3 Nguyên tắc vàng.` });
+    Trả về JSON theo schema.` });
     
     if (imageBase64 && imageBase64.includes(',')) {
       const [header, data] = imageBase64.split(',');
@@ -86,11 +84,12 @@ export async function analyzeContent(
     if (audioBase64) parts.push({ inlineData: { mimeType: audioMimeType, data: audioBase64 } });
 
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3-pro-preview",
       contents: { parts },
       config: {
-        systemInstruction: "Bạn là chuyên gia phân tích rủi ro của Trợ lý AI Lá Chắn Số. Trả về JSON theo đúng Schema.",
+        systemInstruction: "Bạn là chuyên gia phân tích rủi ro an ninh mạng. Hãy suy nghĩ thật kỹ trước khi trả lời.",
         responseMimeType: "application/json",
+        thinkingConfig: { thinkingBudget: 8192 },
         responseSchema: {
           type: Type.OBJECT,
           properties: {
@@ -104,18 +103,17 @@ export async function analyzeContent(
         }
       }
     });
-    return JSON.parse(response.text || "{}") as AnalysisResult;
+    
+    const resultText = response.text || "{}";
+    return JSON.parse(resultText) as AnalysisResult;
   } catch (error: any) {
-    let errorMessage = "Lá Chắn Số đang gặp sự cố kết nối với trí tuệ nhân tạo.";
-    if (error.message?.includes("403") || error.message?.includes("forbidden") || error.message?.includes("API_KEY_INVALID")) {
-      errorMessage = "LỖI HỆ THỐNG: Gemini API chưa được kích hoạt hoặc API Key không hợp lệ. Vui lòng nhấn nút 'ENABLE' trong Google Cloud Console như ảnh bạn đã tìm thấy!";
-    }
+    console.error("Lỗi phân tích Gemini:", error);
     return { 
       riskLevel: RiskLevel.MEDIUM, 
-      explanation: errorMessage, 
+      explanation: "Không thể kết nối với trung tâm phân tích AI. Vui lòng thử lại sau.", 
       isScam: false, 
-      patternsFound: ["Lỗi cấu hình Google Cloud"], 
-      recommendations: ["Vui lòng kiểm tra lại mục API & Services", "Đảm bảo Gemini API đã ở trạng thái ENABLED"] 
+      patternsFound: ["Lỗi kết nối API"], 
+      recommendations: ["Kiểm tra kết nối internet", "Liên hệ admin nếu lỗi kéo dài"] 
     };
   }
 }
@@ -125,15 +123,13 @@ export async function fetchLatestScamNews(): Promise<ScamNews[]> {
   const timestamp = new Date().toLocaleString('vi-VN');
 
   try {
-    // Model flash nhanh hơn đáng kể so với model pro cho các tác vụ tìm kiếm và tổng hợp
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `[Thời gian: ${timestamp}] Sử dụng Google Search để tìm kiếm 8-12 tin tức mới nhất về "lừa đảo qua mạng" tại Việt Nam từ các nguồn chính thống: nhandan.vn, vnexpress.net, tuoitre.vn, và baochinhphu.vn. 
-      Yêu cầu: Trả về một mảng JSON các đối tượng {title, url, source, snippet, date}. 
-      Snippet là bản tóm tắt cực kỳ ngắn gọn (không quá 2 câu). URL phải là link trực tiếp đến bài báo.`,
+      model: "gemini-3-pro-preview",
+      contents: `[Thời gian: ${timestamp}] Tìm kiếm 8-10 tin tức mới nhất về "lừa đảo qua mạng" tại Việt Nam. Nguồn: nhandan.vn, vnexpress.net, tuoitre.vn. Trả về mảng JSON.`,
       config: {
         tools: [{ googleSearch: {} }],
         responseMimeType: "application/json",
+        thinkingConfig: { thinkingBudget: 4096 },
         responseSchema: {
           type: Type.ARRAY,
           items: {
@@ -151,18 +147,11 @@ export async function fetchLatestScamNews(): Promise<ScamNews[]> {
       }
     });
 
-    const parsed = JSON.parse(response.text || "[]") as ScamNews[];
-    return parsed.map(item => ({
-      ...item,
-      date: item.date || "Cập nhật mới",
-      snippet: item.snippet || "Vui lòng xem chi tiết tại link nguồn."
-    }));
+    return JSON.parse(response.text || "[]") as ScamNews[];
   } catch (error) {
     console.error("Lỗi fetch tin tức động:", error);
-    // Chế độ dự phòng nếu AI search thất bại
     return [
-      { title: "Cảnh báo thủ đoạn lừa đảo giả danh shipper", url: "https://vnexpress.net/tag/lua-dao-qua-mang-27298", source: "VnExpress", date: "Mới", snippet: "Kẻ gian gọi điện báo có đơn hàng, yêu cầu chuyển khoản trước hoặc click vào link lạ để nhận mã giảm giá." },
-      { title: "Nâng cao cảnh giác với bẫy 'việc nhẹ lương cao'", url: "https://nhandan.vn/tu-khoa/luadaoquamang-tag20806.html", source: "Báo Nhân Dân", date: "Mới", snippet: "Học sinh sinh viên cần cẩn trọng với các lời mời chốt đơn Shopee, Lazada nhận hoa hồng cực cao." }
+      { title: "Cảnh báo thủ đoạn lừa đảo giả danh shipper", url: "https://vnexpress.net/tag/lua-dao-qua-mang-27298", source: "VnExpress", date: "Mới", snippet: "Kẻ gian gọi điện báo có đơn hàng, yêu cầu chuyển khoản trước." }
     ];
   }
 }
@@ -171,10 +160,11 @@ export async function fetchLatestScamScenario(): Promise<ScamScenario> {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3-pro-preview",
       contents: "Tạo một kịch bản lừa đảo công nghệ cao mới nhất nhắm vào học sinh THPT. Trả về JSON.",
       config: { 
         responseMimeType: "application/json",
+        thinkingConfig: { thinkingBudget: 4096 },
         responseSchema: {
           type: Type.OBJECT,
           properties: {
@@ -195,9 +185,9 @@ export async function fetchLatestScamScenario(): Promise<ScamScenario> {
       id: `lcs-err-${Date.now()}`,
       title: "Cảnh báo hệ thống",
       category: "Kỹ thuật",
-      description: "Hệ thống AI đang tạm nghỉ để bảo trì cấu hình Google Cloud.",
-      signs: ["Lỗi kết nối API"],
-      prevention: "Hãy đảm bảo Gemini API đã được ENABLE trong bảng điều khiển Google Cloud."
+      description: "Hệ thống Radar đang gặp sự cố kết nối.",
+      signs: ["Lỗi API"],
+      prevention: "Hãy cập nhật lại ứng dụng."
     };
   }
 }
